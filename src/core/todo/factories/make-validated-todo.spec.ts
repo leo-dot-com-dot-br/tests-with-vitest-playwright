@@ -1,19 +1,86 @@
-import * as sanitizeStrMod from "@/utils/sanitize-str";
-import { makeValidatedTodo } from "./make-validated-todo";
+import * as sanitizeStrMod from '@/utils/sanitize-str';
+import {
+  InvalidTodo,
+  makeValidatedTodo,
+  ValidTodo,
+} from './make-validated-todo';
+import * as makeNewTodoMod from './make-new-todo';
+import * as validateTodoDescriptionMod from '../schemas/validate-todo-description';
 
 describe('makeValidatedTodo (unit)', () => {
   test('should call sanitizeStr function with right value', () => {
-    const description = 'abcd';
-    const sanitizeStrSpy = vi.spyOn(sanitizeStrMod, 'sanitizeStr').mockReturnValue(description)
+    const { description, sanitizeStrSpy } = makeMocks();
 
-    makeValidatedTodo(description)
+    makeValidatedTodo(description);
 
-    expect(sanitizeStrSpy).toHaveBeenCalledExactlyOnceWith(description)
-  })
+    expect(sanitizeStrSpy).toHaveBeenCalledExactlyOnceWith(description);
+  });
 
-  test('should call validatedTodoDescription with sanitizeStr returns', () => { })
+  test('should call validatedTodoDescription with sanitizeStr returns', () => {
+    const { description, sanitizeStrSpy, validateTodoDescriptionSpy } =
+      makeMocks();
+    const sanitizeStrReturn = 'retorno da sanitizeStr';
+    sanitizeStrSpy.mockReturnValue(sanitizeStrReturn);
 
-  test('should call makeNewTodo if validatedTodoDescription return success', () => { })
+    makeValidatedTodo(description) as ValidTodo;
 
-  test('should return validatedTodoDescription.error if validation failed', () => { })
-})
+    expect(validateTodoDescriptionSpy).toHaveBeenCalledExactlyOnceWith(
+      sanitizeStrReturn,
+    );
+  });
+
+  test('should call makeNewTodo if validatedTodoDescription return success', () => {
+    const { description } = makeMocks();
+
+    const result = makeValidatedTodo(description) as ValidTodo;
+
+    expect(result.success).toBe(true);
+
+    expect(result.data.id).toBe('any-id');
+    expect(result.data.description).toBe('abcd');
+    expect(result.data.createdAt).toBe('any-date');
+  });
+
+  test('should return validatedTodoDescription.error if validation failed', () => {
+    const { errors, description, validateTodoDescriptionSpy } = makeMocks();
+
+    validateTodoDescriptionSpy.mockReturnValue({ errors, success: false });
+
+    const result = makeValidatedTodo(description) as InvalidTodo;
+
+    expect(result).toStrictEqual({ errors, success: false });
+  });
+});
+
+const makeMocks = (description = 'abcd') => {
+  const errors = ['any', 'error'];
+  const todo = {
+    id: 'any-id',
+    description,
+    createdAt: 'any-date',
+  };
+
+  const sanitizeStrSpy = vi
+    .spyOn(sanitizeStrMod, 'sanitizeStr')
+    .mockReturnValue(description);
+
+  const validateTodoDescriptionSpy = vi
+    .spyOn(validateTodoDescriptionMod, 'validateTodoDescription')
+    .mockReturnValue({
+      errors: [],
+      success: true,
+    });
+
+  const makeNewTodoSpy = vi
+    .spyOn(makeNewTodoMod, 'makeNewTodo')
+    .mockReturnValue(todo);
+
+  return {
+    errors,
+    todo,
+    description,
+    sanitizeStrSpy,
+    validateTodoDescriptionSpy,
+    makeNewTodoSpy,
+  };
+};
